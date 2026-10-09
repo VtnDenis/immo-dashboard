@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <title>Investissement LMNP — Quelles communes cibler avec 200 000 €</title>
 <style>
 :root{
@@ -60,6 +62,23 @@ select{width:100%;min-height:44px;font:inherit;color:var(--text);background:var(
   .tablewrap tbody td[data-l]::before{content:attr(data-l);font-size:13px;font-weight:400;color:var(--text-2);text-align:left;flex:none}
 }
 .chart-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:8px 8px 0}
+#map{height:420px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-group);z-index:0}
+.map-legend{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--text-2)}
+.map-legend li{display:flex;align-items:center;gap:6px}
+.map-legend i{width:14px;height:14px;border-radius:50%;flex:none}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg label{border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer;min-height:44px;display:inline-flex;align-items:center}
+.seg input{accent-color:var(--accent);margin-right:8px;width:18px;height:18px}
+.matrix{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.matrix th,.matrix td{padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid var(--line)}
+.matrix th:first-child,.matrix td:first-child{text-align:left;position:sticky;left:0}
+.matrix td.v{font-weight:600}
+.bars{display:grid;gap:8px}
+.barrow{display:grid;grid-template-columns:minmax(120px,180px) 1fr 64px;gap:10px;align-items:center;font-size:14px}
+.barrow .track{background:var(--bg-group);border-radius:6px;height:22px;position:relative}
+.barrow .fill{background:var(--accent);border-radius:6px;height:100%}
+.barrow .val{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.histo-legend{font-size:13px;color:var(--text-2)}
 svg.chart{width:100%;height:auto;display:block;min-width:620px}
 table{border-collapse:collapse;width:100%;min-width:760px;font-variant-numeric:tabular-nums}
 caption{text-align:left;font-size:14px;color:var(--text-2);padding:12px 16px}
@@ -162,6 +181,74 @@ footer{color:var(--text-2);font-size:13px;margin-top:24px}
 <details><summary>Voir les valeurs exactes du graphique</summary><div class="inner" id="chart-data"></div></details>
 </section>
 
+<section class="card" aria-label="Carte des prix et rentas">
+<h2>Carte des 4 départements</h2>
+<p class="sub">Chaque pastille est une commune. Changez d'indicateur et d'année pour comparer les zones.</p>
+<div class="controls">
+<div>
+<label class="fl" for="m-metric">Indicateur</label>
+<select id="m-metric">
+<option value="prix">Prix au m², appartements</option>
+<option value="evol">Évolution 2021 → 2025, appartements</option>
+<option value="volume">Nombre de ventes, tous biens</option>
+<option value="renta">Renta brute estimée, petites surfaces</option>
+</select>
+</div>
+<div>
+<label class="fl" for="m-year">Année</label>
+<select id="m-year"><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option selected>2025</option></select>
+</div>
+<div>
+<span class="fl" id="m-dept-l">Départements</span>
+<div class="seg" role="radiogroup" aria-labelledby="m-dept-l" id="m-dept">
+<label><input type="radio" name="md" value="all" checked> Tous</label>
+<label><input type="radio" name="md" value="74"> 74 Haute-Savoie</label>
+<label><input type="radio" name="md" value="01"> 01 Ain</label>
+<label><input type="radio" name="md" value="69"> 69 Rhône</label>
+<label><input type="radio" name="md" value="78"> 78 Yvelines</label>
+</div>
+</div>
+</div>
+<div id="map" role="application" aria-label="Carte des communes avec l'indicateur choisi"></div>
+<ul class="map-legend" id="m-legend"></ul>
+<p class="hint" id="m-count" aria-live="polite"></p>
+</section>
+
+<section class="card" aria-label="Matrice des prix par année">
+<h2>Matrice prix × années</h2>
+<p class="sub">Les 14 communes les plus vendues de la zone. La couleur suit la valeur, toujours affichée en chiffres.</p>
+<div class="controls">
+<div>
+<label class="fl" for="x-zone">Zone</label>
+<select id="x-zone"><option value="74">Genevois : Haute-Savoie</option><option value="01">Genevois : Ain frontalier</option><option value="69">Lyon et Rhône</option><option value="78">Yvelines</option></select>
+</div>
+<div>
+<label class="fl" for="x-metric">Indicateur</label>
+<select id="x-metric"><option value="med_pm2">Prix au m², appartements</option><option value="volume">Nombre de ventes</option></select>
+</div>
+</div>
+<div style="overflow-x:auto"><table class="matrix" id="x-table"></table></div>
+</section>
+
+<section class="card" aria-label="Renta par commune">
+<h2>Renta brute par commune</h2>
+<p class="sub">Mêmes chiffres que le classement, en barres pour comparer d'un coup d'œil.</p>
+<div class="bars" id="bars"></div>
+</section>
+
+<section class="card" aria-label="Distribution des prix">
+<h2>Où se placent les bonnes affaires ?</h2>
+<p class="sub">Distribution des prix au m² des petites surfaces (≤ 35 m², 2024-2025). La ligne verte marque la médiane : visez 15 % en dessous.</p>
+<div class="controls">
+<div>
+<label class="fl" for="h-com">Commune ou zone</label>
+<select id="h-com"></select>
+</div>
+</div>
+<div id="histo"></div>
+<p class="histo-legend" id="h-info" aria-live="polite"></p>
+</section>
+
 <div class="warn" role="note"><b>À vérifier avant toute offre.</b> Ferney-Voltaire affiche un loyer DHUP incohérent (35,40 €/m²) : renta surévaluée. Annemasse et Maisons-Laffitte sont en estimation interpolée, pas communale. Ville-la-Grand (5 ventes) et Vétraz-Monthoux (14 ventes) reposent sur trop peu de transactions. Encadrement des loyers Lyon/Villeurbanne, taxe foncière et DPE à croiser ensuite.</div>
 
 <details><summary>Méthode et sources</summary><div class="inner">
@@ -179,7 +266,7 @@ const fmt = n => Math.round(n).toLocaleString('fr-FR').replace(/\u202F/g,' ') + 
 const pct = n => n.toFixed(1).replace('.',',') + ' %';
 const budgetEl=document.getElementById('budget');
 
-fetch('data.json').then(r=>{if(!r.ok)throw 0;return r.json();}).then(j=>{DB=j;render();
+fetch('data.json').then(r=>{if(!r.ok)throw 0;return r.json();}).then(j=>{DB=j;render();renderBars();
 try{chart();}catch(e){document.getElementById('chart').innerHTML='<p class="hint">Graphique indisponible. Les valeurs exactes restent accessibles ci-dessous.</p>';}})
 .catch(()=>{document.querySelector('#t tbody').innerHTML='<tr><td colspan="7">Données introuvables. Vérifiez la connexion puis rechargez la page.</td></tr>';
 document.getElementById('v-detail').textContent='Données introuvables. Rechargez la page.';});
@@ -262,6 +349,191 @@ DB.years.map(y=>`<th scope="col">${y}</th>`).join('')+'</tr></thead><tbody>';
 for(const [key,label] of names){t+=`<tr><td>${label}</td>`+DB.series[key].map(v=>`<td>${v?v.toLocaleString('fr-FR'): '—'}</td>`).join('')+'</tr>';}
 document.getElementById('chart-data').innerHTML=t+'</tbody></table>';
 }
+
+/* ---------- Carte, matrice, barres, histogramme ---------- */
+let AGG=null, GEO=null, HISTO=null, RGEO=null, map=null, layer=null;
+function lazyData(){
+  if(lazyData.p) return lazyData.p;
+  lazyData.p=Promise.all([
+    fetch('communes-agg.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
+    fetch('communes-geo.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
+    fetch('histo.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
+    fetch('renta-geo.json').then(r=>{if(!r.ok)throw 0;return r.json();})
+  ]).then(([a,g,h,rg])=>{AGG=a;GEO=g;HISTO=h;RGEO=rg;});
+  return lazyData.p;
+}
+function binColor(v,bins,colors){for(let i=0;i<bins.length;i++){if(v<bins[i])return colors[i];}return colors[colors.length-1];}
+const BLUES=['#E8EEF7','#C9D7EC','#9DB9DD','#6B93CC','#3E6BB3','#274E8D','#16305E'];
+const DIVER=['#0E7C7B','#3AA99E','#CFE3DC','#D8D8DE','#ECD9AE','#D89A3D','#8A4B08'];
+const acc=()=>getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#0B6E4F';
+const numFR=n=>Math.round(n).toLocaleString('fr-FR');
+
+/* ----- Carte ----- */
+const MDEF={
+  prix:{bins:[2500,3500,4500,5500,6500,8000],unit:' €/m²',colors:BLUES,label:'Prix au m²'},
+  evol:{bins:[-15,-8,-3,0,3,8],unit:' %',colors:DIVER,label:'Évolution'},
+  volume:{bins:[5,15,40,100,250,600],unit:' ventes',colors:BLUES,label:'Ventes'},
+  renta:{bins:[4,4.5,5,5.5,6,7],unit:' %',colors:BLUES,label:'Renta'}
+};
+function legendHTML(def){
+  const {bins,colors,unit}=def;let h='';
+  h+=`<li><i style="background:${colors[0]}"></i>&lt; ${String(bins[0]).replace('.',',')}${unit}</li>`;
+  for(let i=1;i<bins.length;i++)
+    h+=`<li><i style="background:${colors[i]}"></i>${String(bins[i-1]).replace('.',',')} – ${String(bins[i]).replace('.',',')}${unit}</li>`;
+  h+=`<li><i style="background:${colors[colors.length-1]}"></i>≥ ${String(bins[bins.length-1]).replace('.',',')}${unit}</li>`;
+  return h;
+}
+function mapPoints(){
+  const metric=document.getElementById('m-metric').value;
+  const year=document.getElementById('m-year').value;
+  const dept=document.querySelector('#m-dept input:checked').value;
+  const pts=[];
+  if(metric==='renta'){
+    for(const r of RGEO){
+      if(dept!=='all'&&r.d!==dept)continue;
+      pts.push({nom:r.commune,xy:r.xy,v:r.renta,n:null,sub:`${r.renta.toFixed(1).replace('.',',')} % · acte-en-main ${numFR(r.acte)} €`});
+    }
+    return pts;
+  }
+  for(const d of Object.keys(AGG)){
+    if(dept!=='all'&&d!==dept)continue;
+    for(const [c,v] of Object.entries(AGG[d])){
+      const xy=(GEO[d]||{})[c];if(!xy)continue;
+      const Y=AGG[d][c][year]||{};
+      if(metric==='prix'){
+        const a=Y['Appartement'];
+        if(!a||a.n<3)continue;
+        pts.push({nom:v.nom,xy,v:a.med_pm2,n:a.n,sub:`${numFR(a.med_pm2)} €/m² · ${a.n} ventes ${year}`});
+      }else if(metric==='volume'){
+        const n=((Y['Appartement']||{}).n||0)+((Y['Maison']||{}).n||0);
+        if(n<1)continue;
+        pts.push({nom:v.nom,xy,v:n,n,sub:`${n} ventes en ${year}`});
+      }else if(metric==='evol'){
+        const a21=(AGG[d][c]['2021']||{})['Appartement'],a25=(AGG[d][c]['2025']||{})['Appartement'];
+        if(!a21||!a25||a21.n<5||a25.n<5)continue;
+        const e=(a25.med_pm2-a21.med_pm2)/a21.med_pm2*100;
+        pts.push({nom:v.nom,xy,v:e,n:a25.n,sub:`${e>=0?'+':''}${e.toFixed(1).replace('.',',')} % de 2021 à 2025`});
+      }
+    }
+  }
+  return pts;
+}
+function renderMap(){
+  const box=document.getElementById('map');
+  if(!window.L){box.innerHTML='<p class="hint" style="padding:20px">Carte indisponible hors connexion (fond OpenStreetMap non chargé). Le tableau et la matrice restent utilisables.</p>';return;}
+  const metric=document.getElementById('m-metric').value;
+  document.getElementById('m-year').disabled=(metric==='renta'||metric==='evol');
+  if(!map){
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    map=L.map('map',{zoomAnimation:!reduced,fadeAnimation:!reduced}).setView([46.6,4.9],7);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+    setTimeout(()=>map.invalidateSize(),300);
+  }
+  if(layer)layer.remove();
+  layer=L.layerGroup();
+  const def=MDEF[metric],pts=mapPoints();
+  const bounds=[];
+  for(const p of pts){
+    const col=binColor(p.v,def.bins,def.colors);
+    const r=metric==='volume'?4+10*Math.sqrt(Math.min(p.v,900)/900):(p.n?4+8*Math.sqrt(Math.min(p.n,600)/600):7);
+    const valTxt=metric==='prix'?numFR(p.v):p.v.toFixed(1).replace('.',',');
+    L.circleMarker([p.xy[1],p.xy[0]],{radius:r,fillColor:col,fillOpacity:.85,color:'#fff',weight:1.5})
+      .bindTooltip(`${p.nom} — ${def.label} : ${valTxt}${def.unit}`)
+      .bindPopup(`<b>${p.nom}</b><br>${p.sub}`).addTo(layer);
+    bounds.push([p.xy[1],p.xy[0]]);
+  }
+  layer.addTo(map);
+  if(bounds.length)map.fitBounds(bounds,{padding:[30,30]});
+  document.getElementById('m-legend').innerHTML=legendHTML(def);
+  document.getElementById('m-count').textContent=`${pts.length} communes affichées. ${metric==='evol'?'Évolution calculée sur les communes avec au moins 5 ventes en 2021 et 2025.':''}`;
+}
+function initMap(){
+  ['m-metric','m-year'].forEach(id=>document.getElementById(id).addEventListener('change',renderMap));
+  document.getElementById('m-dept').addEventListener('change',renderMap);
+  lazyData().then(renderMap).catch(()=>{
+    document.getElementById('map').innerHTML='<p class="hint" style="padding:20px">Données cartographiques introuvables. Rechargez la page.</p>';});
+}
+
+/* ----- Matrice ----- */
+function renderMatrix(){
+  if(!AGG)return;
+  const d=document.getElementById('x-zone').value, m=document.getElementById('x-metric').value;
+  const rows=Object.entries(AGG[d]).map(([c,v])=>{
+    const vols=[2021,2022,2023,2024,2025].map(y=>(((v[String(y)]||{})['Appartement']||{}).n||0)+(((v[String(y)]||{})['Maison']||{}).n||0));
+    return {nom:v.nom,v,tot:vols[4],vols};
+  }).filter(r=>r.tot>0).sort((a,c)=>c.tot-a.tot).slice(0,14);
+  const bins=m==='med_pm2'?[2500,3500,4500,5500,6500,8000]:[5,15,40,100,250,600];
+  const lum=h=>{h=h.replace('#','');const c=[0,2,4].map(i=>parseInt(h.substr(i,2),16)/255);
+    const l=c.map(x=>x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4));return .2126*l[0]+.7152*l[1]+.0722*l[2];};
+  let h='<caption class="sr">Matrice par commune et par année</caption><thead><tr><th scope="col">Commune</th>'+
+    [2021,2022,2023,2024,2025].map(y=>`<th scope="col">${y}</th>`).join('')+'</tr></thead><tbody>';
+  for(const r of rows){
+    h+='<tr><td>'+r.nom+'</td>';
+    for(const y of [2021,2022,2023,2024,2025]){
+      let val,txt;
+      if(m==='med_pm2'){const a=((r.v[String(y)]||{})['Appartement']);val=a&&a.n>=3?a.med_pm2:null;txt=val==null?'—':numFR(val);}
+      else{val=r.vols[y-2021]||null;txt=val==null?'—':val;}
+      if(val==null){h+='<td>—</td>';continue;}
+      const bg=binColor(val,bins,BLUES),fg=lum(bg)>0.35?'#1A1C1E':'#FFFFFF';
+      h+=`<td class="v" style="background:${bg};color:${fg}">${txt}</td>`;
+    }
+    h+='</tr>';
+  }
+  document.getElementById('x-table').innerHTML=h+'</tbody>';
+}
+function initMatrix(){
+  ['x-zone','x-metric'].forEach(id=>document.getElementById(id).addEventListener('change',renderMatrix));
+  lazyData().then(renderMatrix).catch(()=>{});
+}
+
+/* ----- Barres de renta ----- */
+function renderBars(){
+  if(!DB)return;
+  const list=DB.renta.map(r=>({...r,'renta_brute_%':+r['renta_brute_%']}))
+    .sort((a,c)=>c['renta_brute_%']-a['renta_brute_%']);
+  const max=list[0]['renta_brute_%'];
+  document.getElementById('bars').innerHTML=list.map(r=>
+    `<div class="barrow"><span>${r.commune}</span>
+    <span class="track"><span class="fill" style="display:block;width:${(r['renta_brute_%']/max*100).toFixed(1)}%"></span></span>
+    <span class="val">${r['renta_brute_%'].toFixed(1).replace('.',',')} %</span></div>`).join('');
+}
+
+/* ----- Histogramme ----- */
+function renderHisto(){
+  if(!HISTO)return;
+  const key=document.getElementById('h-com').value, h=HISTO[key];
+  if(!h)return;
+  const W=680,Ht=240,PL=8,PB=26,PT=30,nb=h.bins.length;
+  const max=Math.max(...h.counts);
+  const bw=(W-PL-8)/nb, med=h.med, A=acc();
+  let s=`<svg viewBox="0 0 ${W} ${Ht}" style="width:100%;height:auto" role="img" aria-label="Distribution des prix au mètre carré pour ${key}. Médiane ${med} euros par mètre carré sur ${h.n} ventes.">`;
+  h.counts.forEach((c,i)=>{
+    const bh=Math.max(2,c/max*(Ht-PT-PB)), x=PL+i*bw, y=Ht-PB-bh;
+    const mid=h.bins[i]+200, good=mid<med*0.85;
+    s+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" style="fill:${good?A:'#9AA0A8'}"><title>${h.bins[i].toLocaleString('fr-FR')} – ${(h.bins[i]+400).toLocaleString('fr-FR')} €/m² : ${c} ventes</title></rect>`;
+  });
+  let mi=nb-1;for(let i=0;i<nb;i++){if(h.bins[i]+400>=med){mi=i;break;}}
+  const mx=PL+mi*bw;
+  s+=`<line x1="${mx}" y1="8" x2="${mx}" y2="${Ht-PB}" stroke="${A}" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="${Math.min(mx+6,W-150)}" y="20" font-size="12" font-weight="700" fill="${A}">médiane ${med.toLocaleString('fr-FR')} €/m²</text>`;
+  for(let i=0;i<nb;i+=6){s+=`<text x="${(PL+i*bw).toFixed(1)}" y="${Ht-8}" font-size="11" fill="currentColor" opacity=".7">${h.bins[i].toLocaleString('fr-FR')}</text>`;}
+  document.getElementById('histo').innerHTML=s+'</svg>';
+  const seuil=Math.round(med*0.85);
+  document.getElementById('h-info').textContent=
+    `${h.n} petites surfaces (≤ 35 m², 2024-2025). Une bonne affaire se situe vers ${seuil.toLocaleString('fr-FR')} €/m² ou moins (−15 % sous la médiane).`;
+}
+function initHisto(){
+  lazyData().then(()=>{
+    const sel=document.getElementById('h-com');
+    const zones=Object.keys(HISTO).filter(k=>k.startsWith('Z:')).sort();
+    const coms=Object.keys(HISTO).filter(k=>!k.startsWith('Z:')).sort((a,c)=>a.localeCompare(c,'fr'));
+    sel.innerHTML=coms.map(k=>`<option${k==='Annemasse'?' selected':''}>${k}</option>`).join('')+
+      zones.map(k=>`<option value="${k}">${k.replace('Z:','Zone ')}</option>`).join('');
+    sel.addEventListener('change',renderHisto);renderHisto();
+  }).catch(()=>{});
+}
+initMap();initMatrix();initHisto();
 </script>
 </body>
 </html>
