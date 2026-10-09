@@ -179,7 +179,8 @@ const fmt = n => Math.round(n).toLocaleString('fr-FR').replace(/\u202F/g,' ') + 
 const pct = n => n.toFixed(1).replace('.',',') + ' %';
 const budgetEl=document.getElementById('budget');
 
-fetch('data.json').then(r=>{if(!r.ok)throw 0;return r.json();}).then(j=>{DB=j;render();chart();})
+fetch('data.json').then(r=>{if(!r.ok)throw 0;return r.json();}).then(j=>{DB=j;render();
+try{chart();}catch(e){document.getElementById('chart').innerHTML='<p class="hint">Graphique indisponible. Les valeurs exactes restent accessibles ci-dessous.</p>';}})
 .catch(()=>{document.querySelector('#t tbody').innerHTML='<tr><td colspan="7">Données introuvables. Vérifiez la connexion puis rechargez la page.</td></tr>';
 document.getElementById('v-detail').textContent='Données introuvables. Rechargez la page.';});
 
@@ -238,7 +239,7 @@ const PALETTE=['#0B6E4F','#B25E09','#6A4FC7','#1F6F9F','#C7435B','#7A7A00','#4C4
 function chart(){
 const W=960,H=340,PL=64,PR=150,PT=16,PB=30;
 const names=FOCUS.filter(([k])=>DB.series[k]&&DB.series[k].some(v=>v));
-const all=names.flatMap(k=>DB.series[k].filter(v=>v));
+const all=names.flatMap(([k])=>DB.series[k].filter(v=>v));
 const min=Math.min(...all)*0.94,max=Math.max(...all)*1.04;
 const X=i=>PL+i*(W-PL-PR)/4, Y=v=>PT+(1-(v-min)/(max-min))*(H-PT-PB);
 let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution du prix au mètre carré des appartements de 2021 à 2025. Lyon recule, le Genevois français progresse. Valeurs exactes sous le graphique.">`;
