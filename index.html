@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Investissement Immobilier — DVF 2021-2025</title>
+<style>
+:root{color-scheme:light dark}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0 auto;max-width:1080px;padding:20px;line-height:1.45}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
+h1{font-size:1.4rem;margin:0}
+.muted{opacity:.7;font-size:.9rem}
+.controls{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;padding:12px;border:1px solid #ccc;border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{cursor:pointer;user-select:none}
+tr.ko{opacity:.45}
+canvas{width:100%;height:320px;border:1px solid #ccc;border-radius:10px}
+.grid{display:grid;grid-template-columns:1fr;gap:16px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{border:1px solid #ccc;border-radius:20px;padding:2px 10px;font-size:.8rem}
+.warn{background:#fff3cd;border:1px solid #e6c200;border-radius:8px;padding:10px;font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+<div>
+<h1>Dashboard Investissement — LMNP ≤ 200 k€ tout compris</h1>
+<div class="muted">DVF 2021-2025 (DGFiP/data.gouv) × Carte des loyers DHUP 2024 (1-2 pièces). Profil : 22 ans, futur CDI, prio Annemasse.</div>
+</div>
+</header>
+
+<div class="controls">
+<label>Budget max acte-en-main : <b id="bval">200 000 €</b><br>
+<input type="range" id="budget" min="110000" max="220000" step="5000" value="200000" style="width:260px"></label>
+<label>Tri : <select id="sort"><option value="renta">Renta brute ↓</option><option value="prix">Prix acte-en-main ↑</option></select></label>
+<label><input type="checkbox" id="hideko" checked> Masquer hors budget</label>
+</div>
+
+<div class="badges" id="kpis"></div>
+<h2>Tableau renta (prix DVF petits ≤35 m² + loyer DHUP +12 % meublé)</h2>
+<div style="overflow-x:auto">
+<table id="t"><thead><tr>
+<th data-k="commune">Commune</th><th data-k="renta_brute_%">Renta %</th><th data-k="prix_acte_en_main_est">Acte-en-main €</th>
+<th data-k="prix_med_petits_dvf">Prix méd. €</th><th data-k="m2_med_petits_dvf">€/m²</th><th data-k="loyer_dhup_m2">Loyer €/m²</th><th data-k="fiabilite">Fiab.</th><th data-k="n_obs">n</th>
+</tr></thead><tbody></tbody></table>
+</div>
+
+<h2>Évolution prix/m² appartements 2021→2025</h2>
+<canvas id="chart" width="1000" height="320"></canvas>
+<div class="muted" id="legend"></div>
+
+<div class="warn"><b>Vigilance :</b> Ferney-Voltaire (loyer DHUP 35,4 €/m² incohérent), Annemasse &amp; Maisons-Laffitte en estimation <i>maille</i> interpolée, Ville-la-Grand (n=5) / Vétraz (n=14) échantillons faibles. Encadrement des loyers Lyon/Villeurbanne, taxe foncière et DPE à croiser avant offre. Acte-en-main = prix DVF +8 % notaire +6 k€ meubles, hors travaux.</div>
+<p class="muted">Sources : data.gouv.fr — Demandes de valeurs foncières (MAJ 07/04/2026), Carte des loyers DHUP 2024. Généré en statique, aucune donnée perso.</p>
+
+<script>
+let DB={renta:[],series:{},years:[]}, sortKey='renta_brute_%', sortDir=-1;
+fetch('data.json').then(r=>r.json()).then(j=>{DB=j;render();draw();});
+
+const budgetEl=document.getElementById('budget'), bval=document.getElementById('bval');
+budgetEl.oninput=()=>{bval.textContent=Number(budgetEl.value).toLocaleString('fr-FR')+' €';render();};
+document.getElementById('sort').onchange=e=>{const v=e.target.value;sortKey=v==='prix'?'prix_acte_en_main_est':'renta_brute_%';sortDir=v==='prix'?1:-1;render();};
+document.getElementById('hideko').onchange=()=>render();
+document.querySelectorAll('#t th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(!k)return;sortDir=(sortKey===k?-sortDir:1);sortKey=k;render();});
+
+function render(){
+  const b=Number(budgetEl.value), hide=document.getElementById('hideko').checked;
+  let rows=DB.renta.map(r=>({...r,
+    'renta_brute_%':+r['renta_brute_%'],'prix_acte_en_main_est':+r['prix_acte_en_main_est'],
+    'prix_med_petits_dvf':+r['prix_med_petits_dvf'],'m2_med_petits_dvf':+r['m2_med_petits_dvf'],
+    'loyer_dhup_m2':+r['loyer_dhup_m2'],'n_obs':+r['n_obs']}));
+  const elig=rows.filter(r=>r.prix_acte_en_main_est<=b);
+  if(hide) rows=elig;
+  rows.sort((a,c)=>(a[sortKey]>c[sortKey]?1:-1)*sortDir);
+  const tb=document.querySelector('#t tbody');tb.innerHTML='';
+  for(const r of rows){
+    const ko=r.prix_acte_en_main_est>b;
+    const tr=document.createElement('tr');if(ko)tr.className='ko';
+    tr.innerHTML=`<td>${r.commune}</td><td>${r['renta_brute_%'].toFixed(1)} %</td>
+    <td>${r.prix_acte_en_main_est.toLocaleString('fr-FR')}</td><td>${r.prix_med_petits_dvf.toLocaleString('fr-FR')}</td>
+    <td>${r.m2_med_petits_dvf.toLocaleString('fr-FR')}</td><td>${String(r.loyer_dhup_m2).replace('.',',')}</td>
+    <td>${r.fiabilite}</td><td>${r.n_obs}</td>`;
+    tb.appendChild(tr);
+  }
+  const best=[...elig].sort((a,c)=>c['renta_brute_%']-a['renta_brute_%'])[0];
+  document.getElementById('kpis').innerHTML=
+    `<span class="badge">${elig.length}/${DB.renta.length} communes ≤ budget</span>`+
+    (best?`<span class="badge">Top : ${best.commune} — ${best['renta_brute_%'].toFixed(1)} % (~${best.prix_acte_en_main_est.toLocaleString('fr-FR')} €)</span>`:'')+
+    `<span class="badge">Mensualité ~640 €/130 k€, ~735 €/150 k€, ~980 €/200 k€ (25 ans, ~3,3 %)</span>`;
+}
+
+function draw(){
+  const cv=document.getElementById('chart'),ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  const names=Object.keys(DB.series).filter(k=>DB.series[k].some(v=>v));
+  const all=names.flatMap(k=>DB.series[k].filter(v=>v));
+  const min=Math.min(...all)*0.92,max=Math.max(...all)*1.03;
+  const X=i=>60+i*(W-90)/4, Y=v=>H-30-(v-min)/(max-min)*(H-60);
+  ctx.strokeStyle='#ccc';ctx.fillStyle='#888';ctx.font='12px system-ui';
+  for(let g=0;g<5;g++){const v=min+(max-min)*g/4;ctx.beginPath();ctx.moveTo(60,Y(v));ctx.lineTo(W-10,Y(v));ctx.stroke();ctx.fillText(Math.round(v)+'',6,Y(v)+4);}
+  DB.years.forEach((y,i)=>ctx.fillText(y,X(i)-12,H-8));
+  const cols=['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#7f7f7f','#bcbd22','#17becf'];
+  const focus=['Gaillard','Annemasse','Villeurbanne','Sartrouville','Maisons-Laffitte','Lyon (tous arr.)','Poissy','Bron'];
+  names.filter(k=>focus.includes(k)).forEach((k,idx)=>{
+    ctx.strokeStyle=cols[idx%cols.length];ctx.lineWidth=2;ctx.beginPath();
+    DB.series[k].forEach((v,i)=>{if(v==null)return;const x=X(i),y=Y(v);i===0||DB.series[k][i-1]==null?ctx.moveTo(x,y):ctx.lineTo(x,y);ctx.fillStyle=ctx.strokeStyle;ctx.fillRect(x-2,y-2,4,4);});
+    ctx.stroke();
+  });
+  document.getElementById('legend').textContent='Courbes : '+focus.filter(k=>names.includes(k)).join(' · ')+' (survolez le tableau pour les valeurs exactes dans data.json).';
+}
+</script>
+</body>
+</html>
