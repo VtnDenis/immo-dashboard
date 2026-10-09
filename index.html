@@ -80,7 +80,7 @@ select{width:100%;min-height:44px;font:inherit;color:var(--text);background:var(
 .barrow .val{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 .histo-legend{font-size:13px;color:var(--text-2)}
 svg.chart{width:100%;height:auto;display:block;min-width:620px}
-table{border-collapse:collapse;width:100%;min-width:760px;font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;min-width:980px;font-variant-numeric:tabular-nums}
 caption{text-align:left;font-size:14px;color:var(--text-2);padding:12px 16px}
 thead th{position:sticky;top:0;background:var(--bg-group);font-size:13px;text-align:right;padding:0;white-space:nowrap}
 thead th:first-child{text-align:left}
@@ -163,12 +163,14 @@ footer{color:var(--text-2);font-size:13px;margin-top:24px}
 <th scope="col"><button data-k="prix_med_petits_dvf">Prix médian constaté <span class="dir" aria-hidden="true"></span></button></th>
 <th scope="col"><button data-k="m2_med_petits_dvf">Prix au m² <span class="dir" aria-hidden="true"></span></button></th>
 <th scope="col"><button data-k="loyer_dhup_m2">Loyer au m² <span class="dir" aria-hidden="true"></span></button></th>
+<th scope="col"><button data-k="tf_cotisation">Taxe foncière 2025 <span class="dir" aria-hidden="true"></span></button></th>
+<th scope="col"><button data-k="dpe_fg">Passoires F/G <span class="dir" aria-hidden="true"></span></button></th>
 <th scope="col"><button data-k="fiabilite">Qualité de l'estimation <span class="dir" aria-hidden="true"></span></button></th>
 </tr></thead>
 <tbody><tr><td colspan="7">Chargement des données…</td></tr></tbody>
 </table>
 </div>
-<p class="hint">Renta = loyer meublé estimé × 12 ÷ prix acte-en-main. Loyer = carte DHUP 1-2 pièces + 12 % de prime meublé. Sélectionnez un en-tête pour trier.</p>
+<p class="hint">Renta = loyer meublé estimé × 12 ÷ prix acte-en-main. Taxe foncière = cotisation moyenne par local 2025 (tous biens, source Terralyse/REI DGFiP) : un studio paie moins. Passoires = part de DPE classés F ou G (ADEME, logements existants). Sélectionnez un en-tête pour trier.</p>
 </section>
 
 <section class="card" aria-label="Évolution des prix">
@@ -192,6 +194,8 @@ footer{color:var(--text-2);font-size:13px;margin-top:24px}
 <option value="evol">Évolution 2021 → 2025, appartements</option>
 <option value="volume">Nombre de ventes, tous biens</option>
 <option value="renta">Renta brute estimée, petites surfaces</option>
+<option value="tf">Taxe foncière moyenne par local, 2025</option>
+<option value="dpe">Part de passoires F/G, DPE</option>
 </select>
 </div>
 <div>
@@ -252,8 +256,8 @@ footer{color:var(--text-2);font-size:13px;margin-top:24px}
 <div class="warn" role="note"><b>À vérifier avant toute offre.</b> Ferney-Voltaire affiche un loyer DHUP incohérent (35,40 €/m²) : renta surévaluée. Annemasse et Maisons-Laffitte sont en estimation interpolée, pas communale. Ville-la-Grand (5 ventes) et Vétraz-Monthoux (14 ventes) reposent sur trop peu de transactions. Encadrement des loyers Lyon/Villeurbanne, taxe foncière et DPE à croiser ensuite.</div>
 
 <details><summary>Méthode et sources</summary><div class="inner">
-<p>Ventes d'appartements ≤ 35 m² issues des fichiers DVF 2021-2025 (DGFiP, data.gouv.fr, mise à jour du 7 avril 2026), filtrées sur l'Île-de-France, le Rhône, la Haute-Savoie et l'Ain frontalier. Loyers : carte des loyers DHUP 2024, appartements de 1-2 pièces. Mensualité indicative : 4,90 € par tranche de 1 000 € empruntés, 25 ans à environ 3,3 %.</p>
-<p>Sources : data.gouv.fr — Demandes de valeurs foncières · Carte des loyers, indicateurs par commune 2024. Page statique, aucune donnée personnelle collectée.</p>
+<p>Ventes d'appartements ≤ 35 m² issues des fichiers DVF 2021-2025 (DGFiP, data.gouv.fr, mise à jour du 7 avril 2026), filtrées sur l'Île-de-France, le Rhône, la Haute-Savoie et l'Ain frontalier. Loyers : carte des loyers DHUP 2024, appartements de 1-2 pièces. Taxe foncière : cotisation moyenne par local et taux votés 2025 (Terralyse à partir du REI DGFiP, millésime 2026) — moyenne tous biens, un studio paie moins. DPE : part de F/G parmi les diagnostics de logements existants (ADEME, open data). Mensualité indicative : 4,90 € par tranche de 1 000 € empruntés, 25 ans à environ 3,3 %.</p>
+<p>Sources : data.gouv.fr — Demandes de valeurs foncières · Carte des loyers, indicateurs par commune 2024 · Taxe foncière par commune 2022-2025 · data.ademe.fr — DPE logements existants. Page statique, aucune donnée personnelle collectée.</p>
 </div></details>
 
 <footer>Dashboard personnel — LMNP · Annemasse, Lyon, Maisons-Laffitte · octobre 2026</footer>
@@ -261,7 +265,7 @@ footer{color:var(--text-2);font-size:13px;margin-top:24px}
 
 <script>
 const MENS_PAR_K = 4.90; // €/mois par 1 000 € empruntés, 25 ans à ~3,3 %
-let DB=null, sortKey='renta_brute_%', sortDir=-1;
+let DB=null, FIS=null, sortKey='renta_brute_%', sortDir=-1;
 const fmt = n => Math.round(n).toLocaleString('fr-FR').replace(/\u202F/g,' ') + ' €';
 const pct = n => n.toFixed(1).replace('.',',') + ' %';
 const budgetEl=document.getElementById('budget');
@@ -275,31 +279,44 @@ budgetEl.addEventListener('input',()=>{document.getElementById('bval').textConte
 document.getElementById('sort').addEventListener('change',e=>{const v=e.target.value;
 sortKey=v==='prix'?'prix_acte_en_main_est':'renta_brute_%';sortDir=v==='prix'?1:-1;render();});
 document.getElementById('hideko').addEventListener('change',render);
+fetch('fiscalite.json').then(r=>{if(!r.ok)throw 0;return r.json();}).then(f=>{FIS=f;if(DB)render();}).catch(()=>{});
 document.querySelectorAll('#t th button').forEach(b=>b.addEventListener('click',()=>{
-const k=b.dataset.k;sortDir=(sortKey===k?-sortDir:(k==='commune'?1:-1));sortKey=k;render();}));
+const k=b.dataset.k;sortDir=(sortKey===k?-sortDir:((k==='commune'||k==='tf_cotisation'||k==='dpe_fg')?1:-1));sortKey=k;render();}));
 
 function rows(){
-return DB.renta.map(r=>({...r,
+return DB.renta.map(r=>({...r,FIS:FIS?FIS[r.commune]:null,
 'renta_brute_%':+r['renta_brute_%'],'prix_acte_en_main_est':+r['prix_acte_en_main_est'],
 'prix_med_petits_dvf':+r['prix_med_petits_dvf'],'m2_med_petits_dvf':+r['m2_med_petits_dvf'],
-'loyer_dhup_m2':parseFloat(String(r['loyer_dhup_m2']).replace(',','.'))}));
+'loyer_dhup_m2':parseFloat(String(r['loyer_dhup_m2']).replace(',','.')),
+'tf_cotisation':FIS&&FIS[r.commune]&&FIS[r.commune].tf_cotisation!=null?FIS[r.commune].tf_cotisation:null,
+'dpe_fg':FIS&&FIS[r.commune]&&FIS[r.commune].dpe_fg!=null?FIS[r.commune].dpe_fg:null}));
+}
+function cmp(a,c){
+  const x=a[sortKey],y=c[sortKey];
+  if(x==null&&y==null)return 0;
+  if(x==null)return 1;
+  if(y==null)return -1;
+  return (typeof x==='string'?x.localeCompare(y,'fr'):(x-y))*sortDir;
 }
 function render(){
 const b=+budgetEl.value, hide=document.getElementById('hideko').checked;
 let all=rows();
 const elig=all.filter(r=>r.prix_acte_en_main_est<=b);
 let list=hide?elig.slice():all.slice();
-list.sort((a,c)=>{const x=a[sortKey],y=c[sortKey];
-return (typeof x==='string'?x.localeCompare(y,'fr'):(x-y))*sortDir;});
+list.sort(cmp);
 const tb=document.querySelector('#t tbody');tb.innerHTML='';
 for(const r of list){
 const ko=r.prix_acte_en_main_est>b;
 const tr=document.createElement('tr');if(ko)tr.className='dim';
 const fiab=r.fiabilite==='commune'?'Communale':(r.fiabilite==='maille'?'Interpolée':'Moyenne Lyon');
+const F=r.FIS||{};
+const tfCell=F.tf_cotisation!=null?`${fmt(F.tf_cotisation)}/an<span class="hint"> · taux ${String(F.tf_taux_global).replace('.',',')} %</span>`:'—';
+const dpeCell=F.dpe_fg!=null?`<span class="pill ${F.dpe_fg>=15?'ko':'ok'}">${F.dpe_fg.toFixed(1).replace('.',',')} % F/G</span>`:'—';
 tr.innerHTML=`<td>${r.commune} ${ko?'<span class="pill ko">○ Hors budget</span>':'<span class="pill ok">● Dans le budget</span>'}</td>
 <td class="renta" data-l="Renta brute">${pct(r['renta_brute_%'])}</td><td data-l="Prix acte-en-main">${fmt(r.prix_acte_en_main_est)}</td>
 <td data-l="Prix médian constaté">${fmt(r.prix_med_petits_dvf)}</td><td data-l="Prix au m²">${fmt(r.m2_med_petits_dvf)}/m²</td>
-<td data-l="Loyer au m²">${String(r.loyer_dhup_m2).replace('.',',')} €/m²</td><td data-l="Estimation">${fiab}</td>`;
+<td data-l="Loyer au m²">${String(r.loyer_dhup_m2).replace('.',',')} €/m²</td>
+<td data-l="Taxe foncière 2025">${tfCell}</td><td data-l="Passoires F/G">${dpeCell}</td><td data-l="Estimation">${fiab}</td>`;
 tb.appendChild(tr);}
 document.querySelectorAll('#t th button .dir').forEach(s=>s.textContent='');
 const active=document.querySelector(`#t th button[data-k="${sortKey}"] .dir`);
@@ -311,10 +328,12 @@ document.getElementById('tcap').textContent=
 `${list.length} communes affichées sur ${all.length}, budget maximum ${fmt(b)}.`;
 const best=elig.slice().sort((a,c)=>c['renta_brute_%']-a['renta_brute_%'])[0];
 if(best){document.getElementById('v-num').textContent=best['renta_brute_%'].toFixed(1).replace('.',',');
+const BF=best.FIS||{};
+const tfTxt=BF.tf_cotisation!=null?`, taxe foncière moyenne <strong>${fmt(BF.tf_cotisation/12)}/mois</strong>`:'';
 document.getElementById('v-detail').innerHTML=
 `<strong>${best.commune}</strong> — studio médian ${fmt(best.prix_med_petits_dvf)} constaté, `+
 `environ <strong>${fmt(best.prix_acte_en_main_est)}</strong> acte-en-main, `+
-`mensualité indicative <strong>${fmt(best.prix_acte_en_main_est/1000*MENS_PAR_K)}/mois</strong>.`;}
+`mensualité indicative <strong>${fmt(best.prix_acte_en_main_est/1000*MENS_PAR_K)}/mois</strong>${tfTxt}.`;}
 document.getElementById('kpis').innerHTML=
 `<li><b>${elig.length}/${all.length}</b> communes dans le budget</li>`+
 (best?`<li>Mensualité 130 k€ ≈ <b>${fmt(130*MENS_PAR_K)}/mois</b></li>
@@ -358,7 +377,8 @@ function lazyData(){
     fetch('communes-agg.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
     fetch('communes-geo.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
     fetch('histo.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
-    fetch('renta-geo.json').then(r=>{if(!r.ok)throw 0;return r.json();})
+    fetch('renta-geo.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
+    fetch('fiscalite.json').then(r=>{if(!r.ok)throw 0;return r.json();}).then(f=>{FIS=f;if(DB)render();return f;})
   ]).then(([a,g,h,rg])=>{AGG=a;GEO=g;HISTO=h;RGEO=rg;});
   return lazyData.p;
 }
@@ -373,7 +393,9 @@ const MDEF={
   prix:{bins:[2500,3500,4500,5500,6500,8000],unit:' €/m²',colors:BLUES,label:'Prix au m²'},
   evol:{bins:[-15,-8,-3,0,3,8],unit:' %',colors:DIVER,label:'Évolution'},
   volume:{bins:[5,15,40,100,250,600],unit:' ventes',colors:BLUES,label:'Ventes'},
-  renta:{bins:[4,4.5,5,5.5,6,7],unit:' %',colors:BLUES,label:'Renta'}
+  renta:{bins:[4,4.5,5,5.5,6,7],unit:' %',colors:BLUES,label:'Renta'},
+  tf:{bins:[1000,1250,1500,1750,2000],unit:' €/an',colors:BLUES,label:'Taxe foncière'},
+  dpe:{bins:[5,8,11,14,18,22],unit:' % F/G',colors:BLUES,label:'Passoires'}
 };
 function legendHTML(def){
   const {bins,colors,unit}=def;let h='';
@@ -392,6 +414,18 @@ function mapPoints(){
     for(const r of RGEO){
       if(dept!=='all'&&r.d!==dept)continue;
       pts.push({nom:r.commune,xy:r.xy,v:r.renta,n:null,sub:`${r.renta.toFixed(1).replace('.',',')} % · acte-en-main ${numFR(r.acte)} €`});
+    }
+    return pts;
+  }
+  if(metric==='tf'||metric==='dpe'){
+    const byxy={};for(const r of RGEO)byxy[r.commune]=r;
+    for(const [nom,f] of Object.entries(FIS||{})){
+      const g=byxy[nom];if(!g)continue;
+      if(dept!=='all'&&g.d!==dept)continue;
+      if(metric==='tf'&&f.tf_cotisation!=null)
+        pts.push({nom,xy:g.xy,v:f.tf_cotisation,n:null,sub:`${numFR(f.tf_cotisation)} €/an en moyenne · taux global ${String(f.tf_taux_global).replace('.',',')} %`});
+      if(metric==='dpe'&&f.dpe_fg!=null)
+        pts.push({nom,xy:g.xy,v:f.dpe_fg,n:f.dpe_total,sub:`${String(f.dpe_fg).replace('.',',')} % de F/G sur ${numFR(f.dpe_total)} DPE`});
     }
     return pts;
   }
@@ -422,7 +456,7 @@ function renderMap(){
   const box=document.getElementById('map');
   if(!window.L){box.innerHTML='<p class="hint" style="padding:20px">Carte indisponible hors connexion (fond OpenStreetMap non chargé). Le tableau et la matrice restent utilisables.</p>';return;}
   const metric=document.getElementById('m-metric').value;
-  document.getElementById('m-year').disabled=(metric==='renta'||metric==='evol');
+  document.getElementById('m-year').disabled=(metric==='renta'||metric==='evol'||metric==='tf'||metric==='dpe');
   if(!map){
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     map=L.map('map',{zoomAnimation:!reduced,fadeAnimation:!reduced}).setView([46.6,4.9],7);
