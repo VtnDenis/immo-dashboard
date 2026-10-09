@@ -75,8 +75,8 @@ select{width:100%;min-height:44px;font:inherit;color:var(--text);background:var(
 .matrix td.v{font-weight:600}
 .bars{display:grid;gap:8px}
 .barrow{display:grid;grid-template-columns:minmax(120px,180px) 1fr 64px;gap:10px;align-items:center;font-size:14px}
-.barrow .track{background:var(--bg-group);border-radius:6px;height:22px;position:relative}
-.barrow .fill{background:var(--accent);border-radius:6px;height:100%}
+.barrow .track{background:var(--line);border-radius:6px;height:22px;position:relative}
+.barrow .fill{background:var(--accent);border-radius:6px;height:100%;min-width:8px;display:block}
 .barrow .val{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 .histo-legend{font-size:13px;color:var(--text-2)}
 svg.chart{width:100%;height:auto;display:block;min-width:620px}
