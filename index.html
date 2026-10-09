@@ -50,6 +50,17 @@ select{width:100%;min-height:44px;font:inherit;color:var(--text);background:var(
 .chips li{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:14px;color:var(--text-2);background:var(--card)}
 .chips li b{color:var(--text);font-variant-numeric:tabular-nums}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+@media (max-width:720px){
+  .tablewrap{border:none;background:transparent;overflow:visible}
+  .tablewrap table,.tablewrap tbody,.tablewrap tr,.tablewrap td{display:block;min-width:0}
+  .tablewrap thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .tablewrap tbody tr{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin:0 0 12px;padding:4px 0}
+  .tablewrap tbody td{border:none;padding:8px 16px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;text-align:right}
+  .tablewrap tbody td:first-child{font-size:17px;border-bottom:1px solid var(--line);padding-bottom:10px}
+  .tablewrap tbody td[data-l]::before{content:attr(data-l);font-size:13px;font-weight:400;color:var(--text-2);text-align:left;flex:none}
+}
+.chart-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:8px 8px 0}
+svg.chart{width:100%;height:auto;display:block;min-width:620px}
 table{border-collapse:collapse;width:100%;min-width:760px;font-variant-numeric:tabular-nums}
 caption{text-align:left;font-size:14px;color:var(--text-2);padding:12px 16px}
 thead th{position:sticky;top:0;background:var(--bg-group);font-size:13px;text-align:right;padding:0;white-space:nowrap}
@@ -144,9 +155,9 @@ footer{color:var(--text-2);font-size:13px;margin-top:24px}
 <section class="card" aria-label="Évolution des prix">
 <div class="chart-head">
 <div><h2>Prix au m² des appartements, 2021 → 2025</h2>
-<p class="sub" id="chart-takeaway">Lyon recule depuis 2022, le Genevois français progresse.</p></div>
+<p class="sub" id="chart-takeaway">Lyon recule depuis 2022, le Genevois français progresse. Sur petit écran, faites défiler le graphique.</p></div>
 </div>
-<div id="chart"></div>
+<div class="chart-scroll" id="chart"></div>
 <ul class="legend" id="legend"></ul>
 <details><summary>Voir les valeurs exactes du graphique</summary><div class="inner" id="chart-data"></div></details>
 </section>
@@ -198,9 +209,9 @@ const ko=r.prix_acte_en_main_est>b;
 const tr=document.createElement('tr');if(ko)tr.className='dim';
 const fiab=r.fiabilite==='commune'?'Communale':(r.fiabilite==='maille'?'Interpolée':'Moyenne Lyon');
 tr.innerHTML=`<td>${r.commune} ${ko?'<span class="pill ko">○ Hors budget</span>':'<span class="pill ok">● Dans le budget</span>'}</td>
-<td class="renta">${pct(r['renta_brute_%'])}</td><td>${fmt(r.prix_acte_en_main_est)}</td>
-<td>${fmt(r.prix_med_petits_dvf)}</td><td>${fmt(r.m2_med_petits_dvf)}/m²</td>
-<td>${String(r.loyer_dhup_m2).replace('.',',')} €/m²</td><td>${fiab}</td>`;
+<td class="renta" data-l="Renta brute">${pct(r['renta_brute_%'])}</td><td data-l="Prix acte-en-main">${fmt(r.prix_acte_en_main_est)}</td>
+<td data-l="Prix médian constaté">${fmt(r.prix_med_petits_dvf)}</td><td data-l="Prix au m²">${fmt(r.m2_med_petits_dvf)}/m²</td>
+<td data-l="Loyer au m²">${String(r.loyer_dhup_m2).replace('.',',')} €/m²</td><td data-l="Estimation">${fiab}</td>`;
 tb.appendChild(tr);}
 document.querySelectorAll('#t th button .dir').forEach(s=>s.textContent='');
 const active=document.querySelector(`#t th button[data-k="${sortKey}"] .dir`);
